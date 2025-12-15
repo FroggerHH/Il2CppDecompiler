@@ -4,9 +4,9 @@
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *      http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -38,12 +38,15 @@ if (System.env.GHIDRA_INSTALL_DIR) {
 else if (project.hasProperty("GHIDRA_INSTALL_DIR")) {
 	ghidraInstallDir = project.getProperty("GHIDRA_INSTALL_DIR")
 }
-
-if (ghidraInstallDir) {
-	apply from: new File(ghidraInstallDir).getCanonicalPath() + "/support/buildExtension.gradle"
-}
 else {
-	throw new GradleException("GHIDRA_INSTALL_DIR is not defined!")
+	ghidraInstallDir = "/opt/ghidra"
+}
+
+task distributeExtension {
+	group = "Ghidra"
+
+	apply from: new File(ghidraInstallDir).getCanonicalPath() + "/support/buildExtension.gradle"
+	dependsOn ':buildExtension'
 }
 //----------------------END "DO NOT MODIFY" SECTION-------------------------------
 
@@ -61,3 +64,40 @@ dependencies {
 
 // Exclude additional files from the built extension
 // Ex: buildExtension.exclude '.idea/**'
+
+
+task installLocalExtension {
+    dependsOn buildExtension
+    doLast {
+		def ghidraHomeDir
+		if (System.env.GHIDRA_HOME) 
+			ghidraHomeDir = System.env.GHIDRA_HOME
+		else if (project.hasProperty("GHIDRA_HOME"))
+			ghidraHomeDir = project.getProperty("GHIDRA_HOME")
+		else ghidraHomeDir = "/opt/ghidra/Ghidra"
+        
+        // Читаем application.properties
+        def propsFile = new File("$ghidraHomeDir/application.properties")
+        if (!propsFile.exists())
+            throw new GradleException("Cannot find application.properties at: ${propsFile.absolutePath}")
+        
+        Properties appProps = new Properties()
+        propsFile.withInputStream { appProps.load(it) }
+        
+        def version = appProps.getProperty("application.version", "11.4.2")
+        def releaseName = appProps.getProperty("application.release.name", "DEV")
+        
+        // Составляем путь к Extensions
+        def ghidraExtDir = System.getProperty("user.home") + "/.config/ghidra/ghidra_${version}_${releaseName}/Extensions/"
+        
+        def sourceZip = fileTree("dist").include("*.zip").singleFile
+        
+        delete ghidraExtDir
+        mkdir ghidraExtDir
+        
+        copy {
+            from zipTree(sourceZip)
+            into ghidraExtDir
+        }
+    }
+}
