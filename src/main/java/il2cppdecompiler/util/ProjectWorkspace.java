@@ -1,7 +1,7 @@
-package il2cppdecompiler.service;
+package il2cppdecompiler.util;
 
 import com.google.gson.Gson;
-import il2cppdecompiler.model.Config;
+
 import ghidra.program.model.listing.Function;
 
 import java.io.File;
@@ -11,7 +11,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 public class ProjectWorkspace {
-    private final String DIR_NAME = "Il2CppDecompiler";
+    private final String PLUGIN_DATA_DIR_NAME = "Il2CppDecompiler";
     private final String CONFIG_FILE_NAME = "config.json";
 
     private final File projectRootDir;
@@ -50,7 +50,7 @@ public class ProjectWorkspace {
     }
 
     public File getProjectFile(String relPath) {
-        var dataDir = new File(projectRootDir, DIR_NAME);
+        var dataDir = new File(projectRootDir, PLUGIN_DATA_DIR_NAME);
         return new File(dataDir, relPath);
     }
 

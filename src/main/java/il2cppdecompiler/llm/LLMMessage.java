@@ -1,4 +1,4 @@
-package il2cppdecompiler.model;
+package il2cppdecompiler.llm;
 
 public class LLMMessage {
     public final String role;

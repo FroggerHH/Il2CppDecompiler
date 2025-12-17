@@ -1,7 +1,7 @@
-package il2cppdecompiler.impl;
+package il2cppdecompiler.llm.llm_clients;
 
-import il2cppdecompiler.api.LLMClient;
-import il2cppdecompiler.model.LLMMessage;
+import il2cppdecompiler.llm.ILLMClient;
+import il2cppdecompiler.llm.LLMMessage;
 
 import javax.swing.*;
 import java.awt.*;
@@ -12,22 +12,14 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
-public class ManualLLMClient implements LLMClient {
+public class ManualLLMClient implements ILLMClient {
 
     @Override
-    public String getName() {
-        return "Manual Copy-Paste";
-    }
+    public String getName() { return "Manual Copy-Paste"; }
 
     @Override
     public String chat(List<LLMMessage> history, String prompt) throws Exception {
-        // Берем последнее сообщение пользователя для отображения
-        // (в реальной интеграции мы бы отправляли весь history)
-        
-        // 1. Показать запрос
         showRequestDialog(prompt);
-
-        // 2. Получить ответ
         return showResponseDialog();
     }
 
@@ -77,6 +69,7 @@ public class ManualLLMClient implements LLMClient {
 
     private String showResponseDialog() throws Exception {
         final AtomicReference<String> result = new AtomicReference<>(null);
+        final AtomicBoolean wasCancelled = new AtomicBoolean(false);
         final CountDownLatch latch = new CountDownLatch(1);
 
         SwingUtilities.invokeLater(() -> {
@@ -107,6 +100,7 @@ public class ManualLLMClient implements LLMClient {
 
             dialog.addWindowListener(new java.awt.event.WindowAdapter() {
                 public void windowClosing(java.awt.event.WindowEvent e) {
+                    wasCancelled.set(true);
                     latch.countDown();
                 }
             });
@@ -115,8 +109,9 @@ public class ManualLLMClient implements LLMClient {
         });
 
         latch.await();
+        if (wasCancelled.get()) throw new Exception("User cancelled response dialog");
         String res = result.get();
-        if (res == null || res.isBlank()) throw new Exception("Empty or cancelled response");
+        if (res == null || res.isBlank()) throw new Exception("Empty response");
         return res;
     }
 

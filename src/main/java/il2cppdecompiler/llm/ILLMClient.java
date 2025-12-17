@@ -1,9 +1,8 @@
-package il2cppdecompiler.api;
+package il2cppdecompiler.llm;
 
 import java.util.List;
-import il2cppdecompiler.model.LLMMessage;
 
-public interface LLMClient {
+public interface ILLMClient {
     /**
      * Sends a chat prompt to the LLM.
      * @param history List of previous messages in the conversation

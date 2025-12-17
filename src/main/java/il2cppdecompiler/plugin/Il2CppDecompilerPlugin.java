@@ -16,17 +16,17 @@ import ghidra.program.util.ProgramLocation;
 import ghidra.util.task.Task;
 import ghidra.util.task.TaskLauncher;
 import ghidra.util.task.TaskMonitor;
-
-import il2cppdecompiler.api.LLMClient;
-import il2cppdecompiler.api.Logger;
-import il2cppdecompiler.impl.ManualLLMClient;
-import il2cppdecompiler.model.DecompiledType;
-import il2cppdecompiler.model.LLMMessage;
-import il2cppdecompiler.service.CodeSanitizer;
-import il2cppdecompiler.service.DumperParser;
-import il2cppdecompiler.service.ProjectWorkspace;
+import il2cppdecompiler.codeprocessing.CodeSanitizer;
+import il2cppdecompiler.codeprocessing.DecompiledType;
+import il2cppdecompiler.codeprocessing.DumperParser;
+import il2cppdecompiler.llm.ILLMClient;
+import il2cppdecompiler.llm.LLMMessage;
+import il2cppdecompiler.llm.llm_clients.ManualLLMClient;
+import il2cppdecompiler.util.Logger;
+import il2cppdecompiler.util.ProjectWorkspace;
 
 import java.io.File;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Matcher;
@@ -45,11 +45,10 @@ import docking.action.MenuData;
     category = PluginCategoryNames.ANALYSIS,
     shortDescription = "LLM C# Decompiler",
     description = "Decompiles IL2CPP functions to C# using LLM"
-)
-//@formatter:on
+) //@formatter:on
 public class Il2CppDecompilerPlugin extends ProgramPlugin {
 
-    private Il2CppDecompilerProvider provider;
+    private UIProvider provider;
 
     private volatile boolean isReady = false;
 
@@ -57,12 +56,13 @@ public class Il2CppDecompilerPlugin extends ProgramPlugin {
     private ProjectWorkspace workspace;
     private CodeSanitizer sanitizer;
     private DumperParser dumper;
-    private LLMClient llmClient;
+    private ILLMClient llmClient;
     private Logger logger;
 
     public Il2CppDecompilerPlugin(PluginTool tool) {
         super(tool);
-        provider = new Il2CppDecompilerProvider(this, "Il2Cpp");
+        String pluginName = getName();
+        provider = new UIProvider(this, pluginName);
     }
 
     @Override
@@ -75,14 +75,9 @@ public class Il2CppDecompilerPlugin extends ProgramPlugin {
     private void createMenuAction() {
         DockingAction action = new DockingAction("Show Il2Cpp Viewer", getName()) {
             @Override
-            public void actionPerformed(ActionContext context) {
-                provider.setVisible(true);
-            }
+            public void actionPerformed(ActionContext context) { provider.setVisible(true); }
         };
-        action.setMenuBarData(new MenuData(
-            new String[] { "Tools", "Il2Cpp", "Show C# Viewer" },
-            null,
-            "Il2Cpp"));
+        action.setMenuBarData(new MenuData(new String[] { "Tools", "Il2Cpp", "Show C# Viewer" }, null, "Il2Cpp"));
         getTool().addAction(action);
     }
 
@@ -98,63 +93,77 @@ public class Il2CppDecompilerPlugin extends ProgramPlugin {
     @Override
     public void programActivated(Program program) {
         super.programActivated(program);
-        provider.setVisible(true);
         isReady = false;
 
-        try {
-            File projectDir = program.getDomainFile().getParent().getProjectLocator().getProjectDir();
-            workspace = new ProjectWorkspace(projectDir);
-            sanitizer = new CodeSanitizer();
-            llmClient = new ManualLLMClient();
+        File projectDir = program.getDomainFile().getParent().getProjectLocator().getProjectDir();
+        workspace = new ProjectWorkspace(projectDir);
+        sanitizer = new CodeSanitizer();
+        llmClient = new ManualLLMClient();
 
-            String dumperPath = workspace.getIl2CppDumperOutputDir();
-            if (dumperPath != null) {
-                dumper = new DumperParser(workspace, dumperPath, logger);
-                SwingUtilities.invokeLater(() -> provider.setLoadingState("Parsing Il2Cpp dump..."));
-                new Thread(() -> {
-                    try {
-                        logger.info("Starting to parse Il2CppDumper output from: " + dumperPath);
-                        dumper.parse();
-                        isReady = true;
-                        logger.info("Il2CppDumper output parsed successfully");
-                        
-                        SwingUtilities.invokeLater(() -> {locationChanged(currentLocation);});
-                    }
-                    catch (Exception e) {
-                        e.printStackTrace();
-                    }
-                }).start();
-            } else {
-                SwingUtilities.invokeLater(() -> provider.setLoadingState("Il2Cpp dump not found. Please configure the dumper path."));
-                logger.warn("Il2Cpp dumper output directory not configured");
-                isReady = true;
-            }
-        }
-        catch (Exception e) {
+        startParsingDumperOutput();
+    }
+
+    private void startParsingDumperOutput() {
+        String dumperPath;
+        try {
+            dumperPath = workspace.getIl2CppDumperOutputDir();
+        } catch (IOException e) {
+            logger.error(e, "Failed to load project config: ");
             e.printStackTrace();
+            return;
         }
+
+        if (dumperPath == null) {
+        SwingUtilities.invokeLater(() -> provider.setLoadingState("Il2Cpp dump not found. Please configure the dumper path."));
+            logger.warn("Il2Cpp dumper output directory not configured");
+            isReady = true;
+            return;
+        }
+
+        dumper = new DumperParser(workspace, dumperPath, logger);
+        SwingUtilities.invokeLater(() -> provider.setLoadingState("Parsing Il2Cpp dump..."));
+        new Thread(() -> {
+            try {
+                logger.info("Starting to parse Il2CppDumper output from: " + dumperPath);
+                dumper.parse();
+                isReady = true;
+                logger.info("Il2CppDumper output parsed successfully");
+                
+                SwingUtilities.invokeLater(() -> {locationChanged(currentLocation);});
+            }
+            catch (Exception e) {
+                isReady = false;
+                logger.error(e, "Failed to parse Il2CppDumper output");
+                e.printStackTrace();
+                SwingUtilities.invokeLater(() -> provider.setLoadingState("Failed to parse Il2CppDumper output"));
+            }
+        }).start();
     }
 
     @Override
     protected void locationChanged(ProgramLocation loc) {
-        if (provider == null || !provider.isVisible())
+        if (provider == null) {
+            logger.warn("Provider is not initialized yet");
             return;
+        }
+        
+        if (workspace == null) {
+            logger.warn("Workspace is not initialized yet");
+            return;
+        }
+
+        // if (provider.isVisible()) return;
 
         Function func = null;
-        if (loc != null) {
+        if (loc != null)
             func = loc.getProgram().getFunctionManager().getFunctionContaining(loc.getAddress());
-        }
 
-        if (workspace != null) {
-            provider.updateLocation(func, workspace, isReady);
-        }
+        provider.updateLocation(func, workspace, isReady);
     }
 
     public ProjectWorkspace getWorkspace() {
         return workspace;
     }
-
-    // --- Логика декомпиляции (перенесена из скрипта) ---
 
     public void decompileFunction(Function func, Runnable onComplete) {
         Task task = new Task("LLM Decompilation", true, true, true) {
@@ -164,7 +173,7 @@ public class Il2CppDecompilerPlugin extends ProgramPlugin {
                     doDecompile(func, monitor);
                 }
                 catch (Exception e) {
-                    // Ghidra way to show error
+                    logger.error(e, "Decompilation failed");
                     ghidra.util.Msg.showError(this, null, "Decompilation Error", e.getMessage(), e);
                 }
                 finally {
@@ -189,7 +198,6 @@ public class Il2CppDecompilerPlugin extends ProgramPlugin {
             logger.info("Decompiling function: " + funcName);
             decomp.openProgram(currentProgram);
 
-            // Настройка опций (сокращено для краткости, скопируй из скрипта)
             DecompileOptions options = new DecompileOptions();
             var toolOpts = new ToolOptions("Decompiler");
             toolOpts.setBoolean("Analysis.Simplify predication", true);
@@ -205,13 +213,11 @@ public class Il2CppDecompilerPlugin extends ProgramPlugin {
             splitAllVars();
             String rawCCode = results.getDecompiledFunction().getC();
 
-            // Сохраняем C код
             String filePrefix = "results/" + funcName + "/";
             workspace.saveFile(filePrefix + "decompGhidra.c", rawCCode);
 
             String simplifiedCCode = sanitizer.sanitizeForCs(rawCCode, true);
 
-            // Контекст
             String typeCName = findTypeCName(rawCCode);
             DecompiledType typeContext =
                 (typeCName != null) ? dumper.typesByCName.get(typeCName) : null;
@@ -219,9 +225,6 @@ public class Il2CppDecompilerPlugin extends ProgramPlugin {
             String prompt = generatePrompt(simplifiedCCode, rawCCode, typeContext);
             workspace.saveFile(filePrefix + "llm_prompt.md", prompt);
 
-            // LLM Call
-            // ManualLLMClient использует SwingUtilities.invokeAndWait внутри, 
-            // поэтому его безопасно вызывать даже из Task (хотя Task не в EDT)
             monitor.setMessage("Waiting for LLM...");
             List<LLMMessage> history = new ArrayList<>();
             String response = llmClient.chat(history, prompt);
@@ -230,6 +233,10 @@ public class Il2CppDecompilerPlugin extends ProgramPlugin {
             String finalCsCode = extractCodeBlock(response, typeContext != null ? typeContext.namespace : null);
             workspace.saveFile(filePrefix + "decompLlm.cs", finalCsCode);
 
+        }
+        catch (Exception e) {
+            logger.error(e, "Decompilation error");
+            ghidra.util.Msg.showError(this, null, "Decompilation Error", e.getMessage(), e);
         }
         finally {
             decomp.dispose();
@@ -306,6 +313,8 @@ private String generatePrompt(String simplifiedCode, String rawCode, DecompiledT
     private Logger createLogger() {
         ConsoleService consoleService = tool.getService(ConsoleService.class);
 
+        consoleService.printError(name);
+
         return new Logger() {
             @Override
             public void info(String message) {
@@ -316,10 +325,15 @@ private String generatePrompt(String simplifiedCode, String rawCode, DecompiledT
             public void warn(String message) {
                 consoleService.println("[WARN] " + message);
             }
-            
+
             @Override
             public void error(String message) {
-                consoleService.println("[ERROR] " + message);
+                consoleService.printlnError("[ERROR] " + message);
+            }
+            
+            @Override
+            public void error(Exception exception, String message) {
+                consoleService.printlnError("[ERROR] " + message + ": " + exception.getMessage());
             }
         };
     }

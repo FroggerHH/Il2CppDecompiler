@@ -1,4 +1,4 @@
-package il2cppdecompiler.service;
+package il2cppdecompiler.codeprocessing;
 
 import java.util.ArrayList;
 import java.util.Arrays;

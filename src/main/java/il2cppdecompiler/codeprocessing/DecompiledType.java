@@ -1,4 +1,4 @@
-package il2cppdecompiler.model;
+package il2cppdecompiler.codeprocessing;
 
 import java.util.HashSet;
 import java.util.Map;

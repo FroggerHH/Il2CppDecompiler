@@ -2,36 +2,39 @@ package il2cppdecompiler.plugin;
 
 import ghidra.framework.plugintool.ComponentProviderAdapter;
 import ghidra.program.model.listing.Function;
-import il2cppdecompiler.service.ProjectWorkspace;
+import il2cppdecompiler.util.ProjectWorkspace;
 import resources.ResourceManager;
 
 import javax.swing.*;
 import java.awt.*;
 import java.io.IOException;
 
-public class Il2CppDecompilerProvider extends ComponentProviderAdapter {
+public class UIProvider extends ComponentProviderAdapter {
+    private Il2CppDecompilerPlugin plugin;
+    private JPanel mainPanel;
+    private CardLayout cardLayout;
 
-    private final Il2CppDecompilerPlugin plugin;
-    private final JPanel mainPanel;
-    private final CardLayout cardLayout;
-
-    // Components
-    private final JTextArea codeArea;
-    private final JLabel statusLabel;
-    private final JButton decompileButton;
-    private final JLabel loadingLabel;
+    private JTextArea codeArea;
+    private JLabel statusLabel;
+    private JButton decompileButton;
+    private JLabel loadingLabel;
 
     private Function currentFunction;
 
-    public Il2CppDecompilerProvider(Il2CppDecompilerPlugin plugin, String owner) {
+    public UIProvider(Il2CppDecompilerPlugin plugin, String owner) {
         super(plugin.getTool(), "Il2Cpp C# Viewer", owner);
         this.plugin = plugin;
 
-        // Настройка главного окна
         setTitle("Il2Cpp C# Decompiler");
-        setWindowGroup("Il2Cpp"); // Группировка окон
+        setWindowGroup("Il2Cpp");
         setIcon(ResourceManager.loadImage("images/csharp-logo.png"));
 
+        buildPanelUi();
+
+        addToTool();
+    }
+
+    private void buildPanelUi() {
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
@@ -59,33 +62,33 @@ public class Il2CppDecompilerProvider extends ComponentProviderAdapter {
         codeArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
         JScrollPane codeScroll = new JScrollPane(codeArea);
 
-        // 4. View: LOADING
+        // 4. View: Loading
         JPanel loadingPanel = new JPanel(new GridBagLayout());
         JPanel innerLoading = new JPanel(new BorderLayout(0, 10));
         loadingLabel = new JLabel("Initializing...");
         loadingLabel.setHorizontalAlignment(SwingConstants.CENTER);
         JProgressBar progressBar = new JProgressBar();
         progressBar.setIndeterminate(true);
-        
         innerLoading.add(loadingLabel, BorderLayout.NORTH);
         innerLoading.add(progressBar, BorderLayout.SOUTH);
         loadingPanel.add(innerLoading);
+
+        // // 5. View: Settings
+        // JPanel settingsPanel = new JPanel(new GridBagLayout());
+        // JLabel statusLabel = new JLabel("Settings");
+        // statusLabel.setHorizontalAlignment(SwingConstants.TOP);
+        // statusLabel.setVerticalAlignment(SwingConstants.TOP);
+        // settingsPanel.add(statusLabel);
 
         // Add cards
         mainPanel.add(infoPanel, "INFO");
         mainPanel.add(actionPanel, "ACTION");
         mainPanel.add(codeScroll, "CODE");
         mainPanel.add(loadingPanel, "LOADING");
-
-        addToTool();
+        mainPanel.add(loadingPanel, "LOADING");
+        // mainPanel.add(settingsPanel, "SETTINGS");
     }
 
-    @Override
-    public JComponent getComponent() {
-        return mainPanel;
-    }
-
-    // Метод для включения экрана загрузки
     public void setLoadingState(String message) {
         loadingLabel.setText(message);
         cardLayout.show(mainPanel, "LOADING");
@@ -125,16 +128,16 @@ public class Il2CppDecompilerProvider extends ComponentProviderAdapter {
     }
 
     private void requestDecompilation() {
-        if (currentFunction == null) return;
-        
+        if (currentFunction == null)
+            return;
+
         decompileButton.setEnabled(false);
         decompileButton.setText("Decompiling...");
 
-        plugin.decompileFunction(currentFunction, () -> {
-            SwingUtilities.invokeLater(() -> {
-                // Обновляем вид после завершения
-                updateLocation(currentFunction, plugin.getWorkspace(), true);
-            });
-        });
+        plugin.decompileFunction(currentFunction, () -> 
+            SwingUtilities.invokeLater(() -> updateLocation(currentFunction, plugin.getWorkspace(), true)));
     }
+
+    @Override
+    public JComponent getComponent() { return mainPanel; }
 }

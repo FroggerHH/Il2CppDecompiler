@@ -1,8 +1,8 @@
-package il2cppdecompiler.service;
+package il2cppdecompiler.codeprocessing;
 
-import il2cppdecompiler.model.DecompiledType;
+import il2cppdecompiler.util.Logger;
+import il2cppdecompiler.util.ProjectWorkspace;
 import il2cppdecompiler.util.Trie;
-import il2cppdecompiler.api.Logger;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -30,12 +30,11 @@ public class DumperParser {
     private final String dumperOutputDir;
     private final Logger logger;
     
-    // Результаты парсинга
     public final Map<String, DecompiledType> typesByCName = new HashMap<>();
     public final Trie typeKeys = new Trie();
     private final Set<String> headerTokens = new HashSet<>();
 
-    public DumperParser(ProjectWorkspace workspace, String dumperOutputDir, Logger logger) throws IOException {
+    public DumperParser(ProjectWorkspace workspace, String dumperOutputDir, Logger logger){
         this.workspace = workspace;
         this.dumperOutputDir = dumperOutputDir;
         this.logger = logger;
@@ -47,7 +46,6 @@ public class DumperParser {
     }
 
     private String readOutputFile(String filename) throws IOException {
-        // Кэшируем файлы в папку проекта для ускорения доступа
         var file = workspace.getProjectFile("DumperOutput/" + filename);
         if (!file.exists()) {
             file.getParentFile().mkdirs();
@@ -95,7 +93,6 @@ public class DumperParser {
         }
     }
 
-    // Helper methods
     private static String getSection(String[] sections, String name) {
         for (var section : sections) {
             if (section.startsWith(name)) {
