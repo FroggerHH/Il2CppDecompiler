@@ -313,8 +313,6 @@ private String generatePrompt(String simplifiedCode, String rawCode, DecompiledT
     private Logger createLogger() {
         ConsoleService consoleService = tool.getService(ConsoleService.class);
 
-        consoleService.printError(name);
-
         return new Logger() {
             @Override
             public void info(String message) {
