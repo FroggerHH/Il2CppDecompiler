@@ -1,16 +1,25 @@
 package il2cppdecompiler.llm.llm_clients;
 
-import il2cppdecompiler.llm.ILLMClient;
-import il2cppdecompiler.llm.LLMMessage;
-
-import javax.swing.*;
-import java.awt.*;
+import java.awt.BorderLayout;
+import java.awt.Frame;
+import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.StringSelection;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
+
+import javax.swing.JButton;
+import javax.swing.JDialog;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.SwingUtilities;
+
+import il2cppdecompiler.llm.ILLMClient;
+import il2cppdecompiler.llm.LLMMessage;
 
 public class ManualLLMClient implements ILLMClient {
 

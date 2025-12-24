@@ -1,0 +1,22 @@
+{
+  "tests": [
+    {
+      "name": "CommentRemover on Colorize__Awake",
+      "functionName": "Colorize$$Awake",
+      "processors": ["CommentRemover"],
+      "expectedFile": "expected/Colorize__Awake_CommentRemover.c"
+    },
+    {
+      "name": "FuncCallArgsUnwrapper on Colorize__Awake",
+      "functionName": "Colorize$$Awake",
+      "processors": ["FuncCallArgsUnwrapper"],
+      "expectedFile": "expected/Colorize__Awake_FuncCallArgsUnwrapper.c"
+    },
+    {
+      "name": "CommentRemover + FuncCallArgsUnwrapper on Colorize__Awake",
+      "functionName": "Colorize$$Awake",
+      "processors": ["CommentRemover", "FuncCallArgsUnwrapper"],
+      "expectedFile": "expected/Colorize__Awake_CommentRemover_FuncCallArgsUnwrapper.c"
+    }
+  ]
+}
