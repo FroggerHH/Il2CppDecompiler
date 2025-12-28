@@ -6,6 +6,8 @@ import ghidra.app.decompiler.DecompileResults;
 import ghidra.framework.options.ToolOptions;
 import ghidra.program.model.listing.Function;
 import ghidra.util.task.TaskMonitor;
+import il2cppdecompiler.util.Logger;
+
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -37,11 +39,42 @@ class SanitizerIntegrationTest {
 
     private static GhidraTestContext ghidraContext;
     private static DecompInterface decompInterface;
+    private static ProcessorFactory processorFactory;
+
+    private static Logger logger;
 
     @BeforeAll
     static void setupGhidra() throws Exception {
+        logger = new Logger() {
+            @Override
+            public void debug(String message) {
+                System.out.println("[DEBUG] " + message);
+            }
+            
+            @Override
+            public void info(String message) {
+                System.out.println("[INFO] " + message);
+            }
+
+            @Override
+            public void warn(String message) {
+                System.out.println("[WARN] " + message);
+            }
+
+            @Override
+            public void error(String message) {
+                System.err.println("[ERROR] " + message);
+            }
+
+            @Override
+            public void error(Exception exception, String message) {
+                System.err.println("[ERROR] " + message + ": " + exception.getMessage());
+            }
+        };
+
         String projectDir = System.getenv("GHIDRA_SANITIZER_TEST_PROJECT_DIR");
         if (projectDir == null || projectDir.isEmpty()) {
+            System.err.println("GHIDRA_SANITIZER_TEST_PROJECT_DIR environment variable is not set");
             throw new RuntimeException(
                 "GHIDRA_SANITIZER_TEST_PROJECT_DIR environment variable is not set");
         }
@@ -64,6 +97,9 @@ class SanitizerIntegrationTest {
             throw new RuntimeException(
                 "Decompiler failed to open program: " + decompInterface.getLastMessage());
         }
+
+        processorFactory = new ProcessorFactory(logger);
+
         System.out.println(" [+] BeforeAll finished");
     }
 
@@ -96,8 +132,8 @@ class SanitizerIntegrationTest {
         CodeContext context = new CodeContext(results);
 
         SanitizerPipeline pipeline = new SanitizerPipeline();
-        for (String processorName : fixture.processors) {
-            ICodeProcessor processor = ProcessorFactory.createProcessor(processorName);
+        for (String processorName : fixture.processors) {    
+            ICodeProcessor processor = processorFactory.createProcessor(processorName);
             pipeline.addProcessor(processor);
         }
 

@@ -14,7 +14,6 @@ import ghidra.util.task.Task;
 import ghidra.util.task.TaskLauncher;
 import il2cppdecompiler.codeprocessing.CodeDecompiler;
 import il2cppdecompiler.codeprocessing.DumperParser;
-import il2cppdecompiler.codeprocessing.sanitizer.CodeSanitizer;
 import il2cppdecompiler.llm.ILLMClient;
 import il2cppdecompiler.llm.llm_clients.OpenAIClientImpl;
 import il2cppdecompiler.llm.llm_clients.OpenAIConfig;
@@ -101,7 +100,6 @@ public class Il2CppDecompilerPlugin extends ProgramPlugin {
 
         startParsingDumperOutput();
 
-
         decompiler = new CodeDecompiler(dumper, llmClient, workspace, currentProgram, logger);
     }
 
@@ -179,6 +177,11 @@ public class Il2CppDecompilerPlugin extends ProgramPlugin {
         ConsoleService consoleService = tool.getService(ConsoleService.class);
 
         return new Logger() {
+            @Override
+            public void debug(String message) {
+                consoleService.println("[DEBUG] " + message);
+            }
+            
             @Override
             public void info(String message) {
                 consoleService.println("[INFO] " + message);

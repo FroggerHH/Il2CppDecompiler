@@ -1,13 +1,15 @@
-package il2cppdecompiler.codeprocessing.sanitizer;
+package il2cppdecompiler.codeprocessing.sanitizer.util;
 
 import ghidra.app.decompiler.ClangNode;
 import ghidra.app.decompiler.ClangToken;
 import ghidra.app.decompiler.ClangTokenGroup;
 
 import java.lang.reflect.Field;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.ListIterator;
+import java.util.Stack;
 import java.util.function.Predicate;
 
 public class AstUtils {
@@ -30,17 +32,6 @@ public class AstUtils {
         } catch (IllegalAccessException e) {
             e.printStackTrace();
             return Collections.emptyList();
-        }
-    }
-
-    public static void removeNodes(ClangTokenGroup group, Predicate<ClangNode> predicate) {
-        List<ClangNode> children = getChildren(group);
-        children.removeIf(predicate);
-
-        for (ClangNode child : children) {
-            if (child instanceof ClangTokenGroup) {
-                removeNodes((ClangTokenGroup) child, predicate);
-            }
         }
     }
 
@@ -70,6 +61,44 @@ public class AstUtils {
                 }
             }
         }
+    }
+
+    public static List<ClangToken> flattenChildrenToList(ClangNode group) {
+        return flattenChildrenToList(group, true);
+    }
+
+    public static List<ClangToken> flattenChildrenToList(ClangNode root, boolean removeEmpty ) {
+        List<ClangToken> result = new ArrayList<>();
+        Stack<ClangNode> stack = new Stack<>();
+        stack.push(root);
+
+        while (!stack.isEmpty()) {
+            ClangNode node = stack.pop();
+
+            if (node instanceof ClangToken) {
+                ClangToken token = (ClangToken) node;
+                if (!removeEmpty || !isEmptyToken(token)) {
+                    result.add(token);
+                }
+                continue;
+            }
+
+            if (node instanceof ClangTokenGroup) {
+                ClangTokenGroup group = (ClangTokenGroup) node;
+                List<ClangNode> children = getChildren(group);
+
+                for (int i = children.size() - 1; i >= 0; i--) {
+                    stack.push(children.get(i));
+                }
+            } // else result.add(node);
+        }
+
+        return result;
+    }
+
+    private static boolean isEmptyToken(ClangToken token) {
+        String text = token.getText();
+        return text == null || text.trim().isEmpty();
     }
 
     private static boolean isWhitespaceToken(ClangNode node) {

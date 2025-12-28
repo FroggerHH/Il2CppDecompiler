@@ -7,6 +7,8 @@ import java.util.regex.Pattern;
 
 import ghidra.app.decompiler.DecompInterface;
 import il2cppdecompiler.codeprocessing.sanitizer.CodeSanitizer;
+import il2cppdecompiler.codeprocessing.sanitizer.ProcessorFactory;
+import il2cppdecompiler.codeprocessing.sanitizer.processors.ast.*;
 import ghidra.app.decompiler.DecompileOptions;
 import ghidra.app.decompiler.DecompileResults;
 import ghidra.framework.options.ToolOptions;
@@ -25,6 +27,7 @@ public class CodeDecompiler {
     private final ILLMClient llmClient;
     private final Program currentProgram;
     private final ProjectWorkspace workspace;
+    private final CodeSanitizer sanitizer;
 
     public CodeDecompiler(DumperParser dumper, ILLMClient llmClient, ProjectWorkspace workspace,
             Program currentProgram, Logger logger) {
@@ -33,6 +36,9 @@ public class CodeDecompiler {
         this.llmClient = llmClient;
         this.currentProgram = currentProgram;
         this.workspace = workspace;
+
+        ProcessorFactory processorFactory = new ProcessorFactory(logger);
+        this.sanitizer = new CodeSanitizer(processorFactory);
     }
 
     public Task decompileFunction(Function func, Runnable onComplete) {
@@ -81,7 +87,7 @@ public class CodeDecompiler {
             String filePrefix = "results/" + funcName + "/";
             workspace.saveFile(filePrefix + "decompGhidra.c", rawCCode);
 
-            String simplifiedCCode = CodeSanitizer.processCCode(cDecompileResults);
+            String simplifiedCCode = sanitizer.processCCode(cDecompileResults);
 
             String typeCName = findTypeCName(rawCCode);
             DecompiledType typeContext =
