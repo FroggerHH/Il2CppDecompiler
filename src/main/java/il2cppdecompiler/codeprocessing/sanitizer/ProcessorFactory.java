@@ -13,6 +13,8 @@ public class ProcessorFactory {
     static {
         PROCESSOR_REGISTRY.put("CommentRemover",                    CommentRemover.class);
         PROCESSOR_REGISTRY.put("FuncCallArgsUnwrapper",             FuncCallArgsUnwrapper.class);
+        PROCESSOR_REGISTRY.put("StaticConstructorCheckRemover",     StaticConstructorCheckRemover.class);
+        PROCESSOR_REGISTRY.put("TypeInitializationCheckRemover",    TypeInitializationCheckRemover.class);
     }
 
     public ProcessorFactory(Logger logger) {

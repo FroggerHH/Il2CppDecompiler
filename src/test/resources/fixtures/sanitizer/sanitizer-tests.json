@@ -17,6 +17,12 @@
       "functionName": "Colorize$$Awake",
       "processors": ["CommentRemover", "FuncCallArgsUnwrapper"],
       "expectedFile": "expected/Colorize__Awake_CommentRemover_FuncCallArgsUnwrapper.c"
+    },
+    {
+      "name": "il2cpp initialization cleanup",
+      "functionName": "Albion.Common.Math.AxisAlignedRectangle$$l",
+      "processors": ["StaticConstructorCheckRemover", "TypeInitializationCheckRemover"],
+      "expectedFile": "expected/Il2cppClassInitCleanup.c"
     }
   ]
 }

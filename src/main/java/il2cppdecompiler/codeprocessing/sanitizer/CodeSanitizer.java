@@ -16,6 +16,8 @@ public class CodeSanitizer {
         // Register processors
         pipeline.addProcessor(processorFactory.createProcessor("CommentRemover"));
         pipeline.addProcessor(processorFactory.createProcessor("FuncCallArgsUnwrapper"));
+        pipeline.addProcessor(processorFactory.createProcessor("StaticConstructorCheckRemover"));
+        pipeline.addProcessor(processorFactory.createProcessor("TypeInitializationCheckRemover"));
         // pipeline.addProcessor(new GhidraBoilerplateRemover());
         // pipeline.addProcessor(new VariableInliner());
 
